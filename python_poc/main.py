@@ -21,9 +21,8 @@ REPLICA_COLLECTION_NAMES = [
 ]
 SHARD_TEST_DB = 'shard_test'
 SHARD_COLLECTION_NAMES = [
-    "collection_1",
-    "collection_2",
-    "collection_3"
+    "collection_4",
+    "collection_5"
 ]
 DC_DICT = {
     0: "DC_1",
