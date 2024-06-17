@@ -3,6 +3,8 @@ from MongoAdapter import MongoAdapter
 import random, string
 from random import randrange
 import uuid
+import time
+import sys
 
 # CONNECTION STRINGS
 REPLICA_SET_CLUSTER_1_CONNECTION_STRING = 'mongodb://localhost:20010,localhost:20011,localhost:20012/'
@@ -40,6 +42,10 @@ SHARD_ADAPTERS = [
     MongoAdapter(MONGOS_CONNECTION_STRING)
 ]
 
+# CONSTANT RELATED TO WRITE
+WRITE_BATCH = 100
+SLEEP_BETWEEN_BATCH = 5
+
 def write_to_db(is_shard):
     def random_uuid(suffix):
         return str(uuid.uuid4()) + "_" + str(suffix)
@@ -58,11 +64,15 @@ def write_to_db(is_shard):
                 random_dc = randrange(3)
                 entry = generate_random_entry(random_dc)
                 adapter.db_write(db, collection_name, entry)
-    if is_shard:
-        actual_write_to_db(SHARD_ADAPTERS, SHARD_TEST_DB, SHARD_COLLECTION_NAMES)
-    else:
-        actual_write_to_db(REPLICA_ADAPTERS, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES)
-
+    while True:
+        print("Starting to write to Mongo")
+        for _ in range(WRITE_BATCH):
+            if is_shard:
+                actual_write_to_db(SHARD_ADAPTERS, SHARD_TEST_DB, SHARD_COLLECTION_NAMES)
+            else:
+                actual_write_to_db(REPLICA_ADAPTERS, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES)
+        print(f"Sleeping for {SLEEP_BETWEEN_BATCH}s")
+        time.sleep(SLEEP_BETWEEN_BATCH)
 
 def drop_db(is_shard):
     def actual_drop_from_db(adapters, db, collection_names):
@@ -71,20 +81,26 @@ def drop_db(is_shard):
 
     if is_shard:
         actual_drop_from_db(SHARD_ADAPTERS, SHARD_TEST_DB, SHARD_COLLECTION_NAMES)
+        print("Collections has been dropped from sharded cluster")
     else:
         actual_drop_from_db(REPLICA_ADAPTERS, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES)
+        print("Collections has been dropped from replica cluster")
 
 # MAIN FUNCTION
 if __name__=="__main__":
-    # INITIALIZE PARSER
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--drop", help = "DROP REPLICA SET DB AND COLLECTIONS", action="store_true")
-    parser.add_argument("-w", "--write", help = "START WRITING TO DB", action="store_true")
-    parser.add_argument("-s", "--shard", help = "PERFORM OPERATIONS ON SHARD", action="store_true")
+    try:
+        # INITIALIZE PARSER
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-d", "--drop", help = "DROP REPLICA SET DB AND COLLECTIONS", action="store_true")
+        parser.add_argument("-w", "--write", help = "START WRITING TO DB", action="store_true")
+        parser.add_argument("-s", "--shard", help = "PERFORM OPERATIONS ON SHARD", action="store_true")
 
-    # PARSING ARGUMENT_AND_PERFORM_ACTION
-    args = parser.parse_args()
-    if args.drop:
-        drop_db(args.shard)
-    elif args.write:
-        write_to_db(args.shard)
+        # PARSING ARGUMENT_AND_PERFORM_ACTION
+        args = parser.parse_args()
+        if args.drop:
+            drop_db(args.shard)
+        elif args.write:
+            write_to_db(args.shard)
+    except KeyboardInterrupt:
+        print("Exiting")
+        sys.exit(0)
