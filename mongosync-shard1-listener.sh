@@ -1,0 +1,1 @@
+mongosync --config mongosync-shard1.conf
