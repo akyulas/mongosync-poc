@@ -96,6 +96,62 @@ rs.initiate(
 )
 ```
 
+### Replica servers
+Repeat the same process for creating replica-1, replica-2 and replica-3 docker containers.
+```
+docker compose -f replica_server1/docker-compose.yaml up -d
+docker compose -f replica_server2/docker-compose.yaml up -d
+docker compose -f replica_server3/docker-compose.yaml up -d
+```
+Login into the containers:
+```
+mongosh mongodb://localhost:20010
+mongosh mongodb://localhost:20013
+mongosh mongodb://localhost:20016
+```
+And initiate the replica sets:
+#### In replica-1:
+```
+rs.initiate(
+  {
+    _id: "replica1_rs",
+    members: [
+      { _id : 0, host : "<your-ip>:20010" },
+      { _id : 1, host : "<your-ip>:20011" },
+      { _id : 2, host : "<your-ip>:20012" }
+    ]
+  }
+)
+```
+
+#### In replica-2:
+```
+rs.initiate(
+  {
+    _id: "replica2_rs",
+    members: [
+      { _id : 0, host : "<your-ip>:20013" },
+      { _id : 1, host : "<your-ip>:20014" },
+      { _id : 2, host : "<your-ip>:20015" }
+    ]
+  }
+)
+```
+
+#### In replica-3:
+```
+rs.initiate(
+  {
+    _id: "replica3_rs",
+    members: [
+      { _id : 0, host : "<your-ip>:20016" },
+      { _id : 1, host : "<your-ip>:20017" },
+      { _id : 2, host : "<your-ip>:20018" }
+    ]
+  }
+)
+```
+
 ### Mongo routers
 Finally start the mongo routers:
 ```

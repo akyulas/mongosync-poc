@@ -1,0 +1,37 @@
+
+version: '3'
+
+services:
+
+  replicasvr2_1:
+    container_name: replicasvr2_1
+    image: mongo:latest
+    command: mongod --replSet replica2_rs --dbpath /data/db --port 27017
+    ports:
+      - 20013:27017
+    volumes:
+      - replicasvr2_1:/data/db
+
+  replicasvr2_2:
+    container_name: replicasvr2_2
+    image: mongo:latest
+    command: mongod --replSet replica2_rs --dbpath /data/db --port 27017
+    ports:
+      - 20014:27017
+    volumes:
+      - replicasvr2_2:/data/db
+
+  replicasvr2_3:
+    container_name: replicasvr2_3
+    image: mongo:latest
+    command: mongod --replSet replica2_rs --dbpath /data/db --port 27017
+    ports:
+      - 20015:27017
+    volumes:
+      - replicasvr2_3:/data/db
+
+volumes:
+  replicasvr2_1:
+  replicasvr2_2:
+  replicasvr2_3:
+
