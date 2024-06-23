@@ -13,7 +13,8 @@ All the above instances are created using docker containers. In this repo we cre
 2. Install mongodb from https://www.mongodb.com/docs/manual/installation/
 
 ### Starting up the mongodb network
-1. Run './docker-compose-start.sh'
+1. Add host.docker.internal as an entry to /etc/hosts and point it to 127.0.0.1, i.e. '127.0.0.1	localhost host.docker.internal'
+2. Run './docker-compose-start.sh'
 
 ### Sharding the collection
 Make sure your application is always connected to mongo routers, it is not suggested to directly connect to shard replica sets.

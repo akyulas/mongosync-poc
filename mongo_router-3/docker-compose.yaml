@@ -3,7 +3,7 @@ services:
   mongos3:
     container_name: mongos3
     image: mongo:latest
-    command: mongos --configdb config_rs/configsvr1:27017,configsvr2:27017,configsvr3:27017 --port 27017 --bind_ip_all
+    command: mongos --configdb config_rs/host.docker.internal:10001,host.docker.internal:10001,host.docker.internal:10003 --port 27017 --bind_ip_all
     ports:
       - 30002:27017
     networks:
