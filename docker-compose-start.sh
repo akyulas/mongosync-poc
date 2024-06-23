@@ -83,3 +83,4 @@ docker exec -it mongos2 mongosh --port 27017 --eval "sh.addShard(\"shard3_rs/hos
 docker exec -it mongos3 mongosh --port 27017 --eval "sh.addShard(\"shard1_rs/host.docker.internal:20001,host.docker.internal:20002,host.docker.internal:20003\")"
 docker exec -it mongos3 mongosh --port 27017 --eval "sh.addShard(\"shard2_rs/host.docker.internal:20004,host.docker.internal:20005,host.docker.internal:20006\")"
 docker exec -it mongos3 mongosh --port 27017 --eval "sh.addShard(\"shard3_rs/host.docker.internal:20007,host.docker.internal:20008,host.docker.internal:20009\")"
+docker exec -i mongos1 bash -c 'mongosh' < shardkeys.js

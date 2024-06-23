@@ -1,1 +1,0 @@
-curl localhost:27183/api/v1/commit -XPOST --data '{ }'

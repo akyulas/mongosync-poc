@@ -5,12 +5,13 @@ from random import randrange
 import uuid
 import time
 import sys
+import datetime
 
 # CONNECTION STRINGS
 REPLICA_SET_CLUSTER_1_CONNECTION_STRING = 'mongodb://localhost:20010,localhost:20011,localhost:20012/'
 REPLICA_SET_CLUSTER_2_CONNECTION_STRING = 'mongodb://localhost:20013,localhost:20014,localhost:20015/'
 REPLICA_SET_CLUSTER_3_CONNECTION_STRING = 'mongodb://localhost:20016,localhost:20017,localhost:20018/'
-MONGOS_CONNECTION_STRING = 'mongodb://localhost:30000/'
+MONGOS_CONNECTION_STRING = 'mongodb://localhost:30000,localhost:30001,localhost:30002/'
 
 # DB NAME AND COLLECTION_NAMES, etc
 REPLICA_TEST_DB = "replica_test"
@@ -21,7 +22,15 @@ REPLICA_COLLECTION_NAMES = [
     "collection_4",
     "collection_5"
 ]
-SHARD_TEST_DB = 'shard_test'
+SHARD_TEST_DB = 'replica_test'
+ALTERNATE_SHARD_TEST_DB = 'shard_test'
+ALL_SHARD_COLLECTION_NAMES = [
+    "collection_1",
+    "collection_2",
+    "collection_3",
+    "collection_4",
+    "collection_5"
+]
 SHARD_COLLECTION_NAMES = [
     "collection_4",
     "collection_5"
@@ -31,16 +40,6 @@ DC_DICT = {
     1: "DC_2",
     2: "DC_3"
 }
-
-# INITIALIZING THE ADAPTER
-REPLICA_ADAPTERS = [
-    MongoAdapter(REPLICA_SET_CLUSTER_1_CONNECTION_STRING),
-    MongoAdapter(REPLICA_SET_CLUSTER_2_CONNECTION_STRING),
-    MongoAdapter(REPLICA_SET_CLUSTER_3_CONNECTION_STRING)
-]
-SHARD_ADAPTERS = [
-    MongoAdapter(MONGOS_CONNECTION_STRING)
-]
 
 # CONSTANT RELATED TO WRITE
 WRITE_BATCH = 2
@@ -56,36 +55,46 @@ def write_to_db(is_shard):
         return {
             "dc": DC_DICT[random_dc],
             "random_id": random_uuid(random_dc),
-            "random_word": random_word(10)
+            "random_word": random_word(10),
+            "created_time": datetime.datetime.utcnow(),
+            'source': 'shard' if is_shard else 'replica'
          }
-    def actual_write_to_db(adapters, db, collection_names):
+    def actual_write_to_db(adapters):
         for adapter in adapters:
-            for collection_name in collection_names:
+            for collection_name in adapter.collection_names:
                 random_dc = randrange(3)
                 entry = generate_random_entry(random_dc)
-                adapter.db_write(db, collection_name, entry)
+                adapter.db_write(collection_name, entry)
     while True:
         print("Starting to write to Mongo")
         for _ in range(WRITE_BATCH):
-            if is_shard:
-                actual_write_to_db(SHARD_ADAPTERS, SHARD_TEST_DB, SHARD_COLLECTION_NAMES)
-            else:
-                actual_write_to_db(REPLICA_ADAPTERS, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES)
+            actual_write_to_db(adapters)
         print(f"Sleeping for {SLEEP_BETWEEN_BATCH}s")
         time.sleep(SLEEP_BETWEEN_BATCH)
 
-def drop_db(is_shard):
-    def actual_drop_from_db(adapters, db, collection_names):
-        for adapter in adapters:
-            adapter.db_drop(db, collection_names)
-
-    if is_shard:
-        actual_drop_from_db(SHARD_ADAPTERS, SHARD_TEST_DB, SHARD_COLLECTION_NAMES)
-        print("Collections has been dropped from sharded cluster")
+def drop_db():
+    for adapter in adapters:
+        adapter.db_drop()
+    print("Collections has been dropped")
+    
+def create_adapters(is_shard, is_alternate, is_all):
+    if not is_shard:
+        return [
+            MongoAdapter(REPLICA_SET_CLUSTER_1_CONNECTION_STRING, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES),
+            MongoAdapter(REPLICA_SET_CLUSTER_2_CONNECTION_STRING, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES),
+            MongoAdapter(REPLICA_SET_CLUSTER_3_CONNECTION_STRING, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES)
+            ]
+    if is_alternate:
+        shard_db = ALTERNATE_SHARD_TEST_DB
     else:
-        actual_drop_from_db(REPLICA_ADAPTERS, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES)
-        print("Collections has been dropped from replica cluster")
-
+        shard_db = SHARD_TEST_DB
+    if is_all:
+        collection_names = ALL_SHARD_COLLECTION_NAMES
+    else:
+        collection_names = SHARD_COLLECTION_NAMES
+    return [
+        MongoAdapter(MONGOS_CONNECTION_STRING, shard_db, collection_names)
+        ]
 # MAIN FUNCTION
 if __name__=="__main__":
     try:
@@ -94,11 +103,14 @@ if __name__=="__main__":
         parser.add_argument("-d", "--drop", help = "DROP REPLICA SET DB AND COLLECTIONS", action="store_true")
         parser.add_argument("-w", "--write", help = "START WRITING TO DB", action="store_true")
         parser.add_argument("-s", "--shard", help = "PERFORM OPERATIONS ON SHARD", action="store_true")
-
+        parser.add_argument("-a", "--alternate", help = "USE ALTERNATE DB FOR SHARDING", action="store_true")
+        parser.add_argument("--all", help = "USE ALL COLLECTION NAMES FOR SHARDING", action="store_true")
         # PARSING ARGUMENT_AND_PERFORM_ACTION
         args = parser.parse_args()
+        # INITIALIZE THE ADAPTERS
+        adapters = create_adapters(args.shard, args.alternate, args.all)
         if args.drop:
-            drop_db(args.shard)
+            drop_db()
         elif args.write:
             write_to_db(args.shard)
     except KeyboardInterrupt:
