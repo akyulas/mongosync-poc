@@ -1,6 +1,3 @@
-
-version: '3'
-
 services:
 
   replicasvr1_1:
@@ -11,6 +8,8 @@ services:
       - 20010:27017
     volumes:
       - replicasvr1_1:/data/db
+    networks:
+      - mongo-demo-network
 
   replicasvr1_2:
     container_name: replicasvr1_2
@@ -20,6 +19,8 @@ services:
       - 20011:27017
     volumes:
       - replicasvr1_2:/data/db
+    networks:
+      - mongo-demo-network
 
   replicasvr1_3:
     container_name: replicasvr1_3
@@ -29,9 +30,15 @@ services:
       - 20012:27017
     volumes:
       - replicasvr1_3:/data/db
+    networks:
+      - mongo-demo-network
 
 volumes:
   replicasvr1_1:
   replicasvr1_2:
   replicasvr1_3:
 
+networks:
+  mongo-demo-network:
+    name: mongo-demo-network
+    external: true

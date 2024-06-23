@@ -1,6 +1,3 @@
-
-version: '3'
-
 services:
 
   configsvr1:
@@ -11,6 +8,8 @@ services:
       - 10001:27017
     volumes:
       - configsvr1:/data/db
+    networks:
+      - mongo-demo-network
 
   configsvr2:
     container_name: configsvr2
@@ -20,6 +19,8 @@ services:
       - 10002:27017
     volumes:
       - configsvr2:/data/db
+    networks:
+      - mongo-demo-network
 
   configsvr3:
     container_name: configsvr3
@@ -29,8 +30,15 @@ services:
       - 10003:27017
     volumes:
       - configsvr3:/data/db
+    networks:
+      - mongo-demo-network
 
 volumes:
   configsvr1:
   configsvr2:
   configsvr3:
+
+networks:
+  mongo-demo-network:
+    name: mongo-demo-network
+    external: true
