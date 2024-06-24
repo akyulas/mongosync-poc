@@ -9,7 +9,10 @@ class MongoAdapter:
     def db_write(self, collection_name, entry):
         db = self.client[self.db_name]
         collection = db[collection_name]
-        collection.insert_one(entry)
+        try:
+            collection.insert_one(entry)
+        except pymongo.errors.DuplicateKeyError:
+            print("Duplicate Key Error Encountered, Skipping")
     
     def db_drop(self):
         db = self.client[self.db_name]

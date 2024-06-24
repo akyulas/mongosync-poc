@@ -45,30 +45,40 @@ DC_DICT = {
 WRITE_BATCH = 2
 SLEEP_BETWEEN_BATCH = 5
 
-def write_to_db(is_shard):
+def write_to_db(is_both, is_shard):
     def random_uuid(suffix):
         return str(uuid.uuid4()) + "_" + str(suffix)
     def random_word(length):
         letters = string.ascii_lowercase
-        return ''.join(random.choice(letters) for i in range(length))
+        return ''.join(random.choice(letters) for _ in range(length))
+    def generate_source():
+        if is_both:
+            return 'both'
+        elif is_shard:
+            return 'shard'
+        return 'replica'
     def generate_random_entry(random_dc):
         return {
             "dc": DC_DICT[random_dc],
             "random_id": random_uuid(random_dc),
             "random_word": random_word(10),
             "created_time": datetime.datetime.utcnow(),
-            'source': 'shard' if is_shard else 'replica'
+            'source': generate_source()
          }
-    def actual_write_to_db(adapters):
+    def actual_write_to_db(adapters, insert_same_entry_to_all_db):
+        random_dc = randrange(3)
+        entry = generate_random_entry(random_dc)
         for adapter in adapters:
             for collection_name in adapter.collection_names:
-                random_dc = randrange(3)
-                entry = generate_random_entry(random_dc)
+                if not insert_same_entry_to_all_db:
+                    random_dc = randrange(3)
+                    entry = generate_random_entry(random_dc)
                 adapter.db_write(collection_name, entry)
     while True:
         print("Starting to write to Mongo")
         for _ in range(WRITE_BATCH):
-            actual_write_to_db(adapters)
+            insert_same_entry_to_all_db = is_both
+            actual_write_to_db(adapters, insert_same_entry_to_all_db)
         print(f"Sleeping for {SLEEP_BETWEEN_BATCH}s")
         time.sleep(SLEEP_BETWEEN_BATCH)
 
@@ -77,23 +87,28 @@ def drop_db():
         adapter.db_drop()
     print("Collections has been dropped")
     
-def create_adapters(is_shard, is_alternate, is_all):
+def create_adapters(is_both, is_shard, is_alternate, is_all):
+    if is_all or is_both:
+        shard_collection_names = ALL_SHARD_COLLECTION_NAMES
+    else:
+        shard_collection_names = SHARD_COLLECTION_NAMES
+    if is_alternate:
+        shard_db = ALTERNATE_SHARD_TEST_DB
+    else:
+        shard_db = SHARD_TEST_DB
+    if is_both:
+        return [
+            MongoAdapter(REPLICA_SET_CLUSTER_1_CONNECTION_STRING, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES),
+            MongoAdapter(MONGOS_CONNECTION_STRING, shard_db, shard_collection_names)
+        ]
     if not is_shard:
         return [
             MongoAdapter(REPLICA_SET_CLUSTER_1_CONNECTION_STRING, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES),
             MongoAdapter(REPLICA_SET_CLUSTER_2_CONNECTION_STRING, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES),
             MongoAdapter(REPLICA_SET_CLUSTER_3_CONNECTION_STRING, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES)
             ]
-    if is_alternate:
-        shard_db = ALTERNATE_SHARD_TEST_DB
-    else:
-        shard_db = SHARD_TEST_DB
-    if is_all:
-        collection_names = ALL_SHARD_COLLECTION_NAMES
-    else:
-        collection_names = SHARD_COLLECTION_NAMES
     return [
-        MongoAdapter(MONGOS_CONNECTION_STRING, shard_db, collection_names)
+        MongoAdapter(MONGOS_CONNECTION_STRING, shard_db, shard_collection_names)
         ]
 # MAIN FUNCTION
 if __name__=="__main__":
@@ -105,14 +120,15 @@ if __name__=="__main__":
         parser.add_argument("-s", "--shard", help = "PERFORM OPERATIONS ON SHARD", action="store_true")
         parser.add_argument("-a", "--alternate", help = "USE ALTERNATE DB FOR SHARDING", action="store_true")
         parser.add_argument("--all", help = "USE ALL COLLECTION NAMES FOR SHARDING", action="store_true")
+        parser.add_argument("-b", "--both", help="WRITE TO BOTH REPLICA SET AND SHARD", action='store_true')
         # PARSING ARGUMENT_AND_PERFORM_ACTION
         args = parser.parse_args()
         # INITIALIZE THE ADAPTERS
-        adapters = create_adapters(args.shard, args.alternate, args.all)
+        adapters = create_adapters(args.both, args.shard, args.alternate, args.all)
         if args.drop:
             drop_db()
         elif args.write:
-            write_to_db(args.shard)
+            write_to_db(args.both, args.shard)
     except KeyboardInterrupt:
         print("Exiting")
         sys.exit(0)
