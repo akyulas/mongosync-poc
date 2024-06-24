@@ -98,8 +98,8 @@ def create_adapters(is_both, is_shard, is_alternate, is_all):
         shard_db = SHARD_TEST_DB
     if is_both:
         return [
+            MongoAdapter(MONGOS_CONNECTION_STRING, shard_db, shard_collection_names),
             MongoAdapter(REPLICA_SET_CLUSTER_1_CONNECTION_STRING, REPLICA_TEST_DB, REPLICA_COLLECTION_NAMES),
-            MongoAdapter(MONGOS_CONNECTION_STRING, shard_db, shard_collection_names)
         ]
     if not is_shard:
         return [
